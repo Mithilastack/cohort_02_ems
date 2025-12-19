@@ -1,51 +1,60 @@
-import React from "react";
+'use client'
+
+import React, { useEffect, useState } from "react";
 import { EventCard } from "./EventCard";
-
-interface Event {
-  type: string;
-  title: string;
-  date: string;
-  location: string;
-  image: string;
-  attendees: string;
-}
-
-const events: Event[] = [
-  {
-    type: "🎤 Concert",
-    title: "Summer Music Fest 2025",
-    date: "June 15, 2025",
-    location: "Central Park, NYC",
-    image: "bg-gradient-to-br from-purple-600 to-pink-600",
-    attendees: "8,234 going",
-  },
-  {
-    type: "💍 Wedding",
-    title: "Elegant Garden Wedding",
-    date: "May 22, 2025",
-    location: "Riverside Venue, LA",
-    image: "bg-gradient-to-br from-rose-600 to-orange-600",
-    attendees: "342 attending",
-  },
-  {
-    type: "🎓 College Event",
-    title: "Tech Summit 2025",
-    date: "April 10, 2025",
-    location: "Silicon Valley Convention Center",
-    image: "bg-gradient-to-br from-blue-600 to-cyan-600",
-    attendees: "5,612 registered",
-  },
-  {
-    type: "🏢 Corporate",
-    title: "Global Business Conference",
-    date: "July 3, 2025",
-    location: "Downtown Chicago",
-    image: "bg-gradient-to-br from-indigo-600 to-blue-600",
-    attendees: "3,421 attending",
-  },
-];
+import { fetchEvents, Event } from "@/lib/eventApi";
+import { fetchWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlistApi";
+import { Button } from "@/components/ui/Button"; // Assuming Button component exists
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export const EventsSection: React.FC = () => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [wishlistEventIds, setWishlistEventIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
+
+  useEffect(() => {
+    const loadWishlist = async () => {
+      try {
+        const data = await fetchWishlist();
+        if (data.success) {
+          const ids = new Set(data.data.wishlist.map(event => event._id));
+          setWishlistEventIds(ids);
+        }
+      } catch (err) {
+        // User might not be logged in, silently fail
+        console.log('Could not fetch wishlist:', err);
+      }
+    };
+
+    loadWishlist();
+  }, []);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const response = await fetchEvents({ limit: 4 });
+        if (response.success) {
+          setEvents(response.data.events);
+        }
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadEvents();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   return (
     <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/50 border-y border-slate-800">
       <div className="max-w-6xl mx-auto">
@@ -58,20 +67,38 @@ export const EventsSection: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {events.map((event, index) => (
-            <EventCard
-              key={index}
-              type={event.type}
-              title={event.title}
-              date={event.date}
-              location={event.location}
-              image={event.image}
-              attendees={event.attendees}
-              onBookNow={() => console.log(`Booking ${event.title}`)}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="h-[380px] rounded-3xl bg-slate-800/40 animate-pulse border border-white/5"></div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+              {events.map((event) => (
+                <EventCard
+                  key={event._id}
+                  type={event.category}
+                  title={event.title}
+                  date={formatDate(event.date)}
+                  location={event.venue}
+                  image={event.bannerUrl || "bg-gradient-to-br from-purple-600 to-pink-600"} // Fallback or handling for color vs url
+                  attendees={`${event.totalSeats - event.availableSeats} attending`}
+                  onBookNow={() => router.push(`/events/${event._id}`)}
+                />
+              ))}
+            </div>
+
+            <div className="flex justify-center">
+              <Link href="/events">
+                <Button className="rounded-full px-8 py-6 text-lg bg-slate-800 hover:bg-slate-700 text-white border border-slate-700">
+                  View All Events
+                </Button>
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

@@ -60,11 +60,20 @@ export const updateProfile = async (
         const { name, phone } = req.body;
         const avatarBuffer = req.file?.buffer;
 
+        logger.info(`Profile update request for user ${userId}:`, {
+            name,
+            phone,
+            hasAvatar: !!avatarBuffer,
+            avatarSize: avatarBuffer?.length,
+        });
+
         const user = await userService.updateProfile(
             userId,
             { name, phone },
             avatarBuffer
         );
+
+        logger.info(`Profile updated successfully for user ${userId}`);
 
         res.status(200).json({
             success: true,

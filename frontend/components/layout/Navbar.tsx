@@ -174,9 +174,51 @@ export const Navbar: React.FC<NavbarProps> = ({ onGetStarted }) => {
                       <p className="text-sm text-slate-300">{user?.email}</p>
                       <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
                     </div>
+                    <Link href="/user/profile">
+                      <button
+                        onClick={() => setDropdownOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <User className="w-4 h-4" />
+                        Profile Settings
+                      </button>
+                    </Link>
+                    <Link href="/bookings">
+                      <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        My Bookings
+                      </button>
+                    </Link>
+                    <Link href="/wishlist">
+                      <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        My Wishlist
+                      </button>
+                    </Link>
+                    <Link href="/chnagePassword">
+                      <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Change Password
+                      </button>
+                    </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-slate-800 flex items-center gap-2 transition text-sm border-t border-slate-700"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -218,9 +260,51 @@ export const Navbar: React.FC<NavbarProps> = ({ onGetStarted }) => {
                   <p className="text-sm text-slate-300 font-medium">{user?.name}</p>
                   <p className="text-xs text-slate-500">{user?.email}</p>
                 </div>
+                <Link href="/profile">
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    Profile Settings
+                  </button>
+                </Link>
+                <Link href="/bookings">
+                      <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        My Bookings
+                      </button>
+                    </Link>
+                    <Link href="/wishlist">
+                      <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        My Wishlist
+                      </button>
+                    </Link>
+                <Link href="/chnagePassword">
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full px-4 py-2 text-left text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Change Password
+                  </button>
+                </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-slate-800 flex items-center gap-2 transition text-sm"
+                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-slate-800 flex items-center gap-2 transition text-sm border-t border-slate-700"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout

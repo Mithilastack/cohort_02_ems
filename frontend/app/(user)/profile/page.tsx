@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Upload, Mail, Phone, User } from 'lucide-react'
@@ -33,6 +33,12 @@ export default function ProfilePage() {
     name: '',
     phone: '',
   })
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -110,6 +116,7 @@ export default function ProfilePage() {
         ?.split('=')[1]
 
       if (!token) {
+        console.error('No authentication token found')
         router.push('/login')
         return
       }
@@ -119,7 +126,19 @@ export default function ProfilePage() {
       formDataToSend.append('phone', formData.phone)
       if (selectedFile) {
         formDataToSend.append('avatar', selectedFile)
+        console.log('Avatar file attached:', {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type,
+        })
       }
+
+      console.log('Sending profile update request:', {
+        url: `${apiUrl}/profile`,
+        name: formData.name,
+        phone: formData.phone,
+        hasAvatar: !!selectedFile,
+      })
 
       const response = await fetch(`${apiUrl}/profile`, {
         method: 'PUT',
@@ -128,18 +147,26 @@ export default function ProfilePage() {
       })
 
       const data = await response.json()
+      console.log('Profile update response:', { status: response.status, data })
 
       if (!response.ok) {
+        console.error('Profile update failed:', data)
         throw new Error(data.message || 'Failed to update profile')
       }
 
       if (data.success) {
+        console.log('Profile updated successfully:', data.data.user)
         setProfile(data.data.user)
+        // Update avatar preview with the URL from server response
+        if (data.data.user.avatar) {
+          setAvatarPreview(data.data.user.avatar)
+        }
         setSelectedFile(null)
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
       }
     } catch (error) {
+      console.error('Profile update error:', error)
       setErrors({
         submit: error instanceof Error ? error.message : 'Failed to update profile',
       })
@@ -162,14 +189,10 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <div className="border-b border-slate-800/50">
+      <div className="border-b border-slate-800/50 mt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-4">
-            <Link href="/user/dashboard">
-              <Button variant="outline" size="icon" className="text-slate-400">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
+
             <div>
               <h1 className="text-3xl font-bold text-slate-50">Edit Profile</h1>
               <p className="text-slate-400 mt-1">Update your personal information</p>
@@ -206,18 +229,21 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Change Avatar
-                </Button>
-              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                onClick={handleAvatarClick}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Change Avatar
+              </Button>
 
               <p className="text-xs text-slate-400 mt-4">
                 JPG, PNG or GIF (max. 5MB)
@@ -291,21 +317,6 @@ export default function ProfilePage() {
                   </div>
                   <FormFieldError message={errors.phone} />
                 </FormField>
-
-                {/* Role (Read-only) */}
-                <FormField>
-                  <Label htmlFor="role" className="text-slate-200">
-                    Account Type
-                  </Label>
-                  <Input
-                    id="role"
-                    type="text"
-                    value={profile?.role || 'User'}
-                    disabled
-                    className="bg-slate-900/50 capitalize"
-                  />
-                </FormField>
-
                 {/* Action Buttons */}
                 <div className="flex gap-4 pt-6">
                   <Button
@@ -327,14 +338,6 @@ export default function ProfilePage() {
               </form>
             </Card>
 
-            {/* Additional Actions */}
-            <div className="mt-6">
-              <Link href="/user/settings">
-                <Button className="w-full bg-slate-800 hover:bg-slate-700 text-slate-50 border border-slate-700">
-                  More Settings & Security
-                </Button>
-              </Link>
-            </div>
           </div>
         </div>
       </div>

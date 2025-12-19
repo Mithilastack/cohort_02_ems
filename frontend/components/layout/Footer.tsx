@@ -1,13 +1,13 @@
 "use client";
 import React, { useState } from "react";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export const Footer: React.FC = () => {
   const [email, setEmail] = useState("");
 
   const footerLinks = {
     Platform: ["Features", "Pricing", "Security"],
-    Company: ["About", "Blog", "Careers"],
     Support: ["Help Center", "Contact Us", "Status"],
   };
 
@@ -19,16 +19,16 @@ export const Footer: React.FC = () => {
   ];
 
   const legalLinks = [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Cookie Policy", href: "#" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
+    { label: "Terms of Service", href: "/terms-of-service" },
+    { label: "Cookie Policy", href: "/cookie-policy" },
   ];
 
   return (
     <footer className="border-t border-slate-800 bg-slate-900/50 py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Main Footer */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -45,13 +45,30 @@ export const Footer: React.FC = () => {
             <div key={title}>
               <h4 className="font-bold mb-4">{title}</h4>
               <ul className="space-y-2 text-sm text-slate-400">
-                {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="hover:text-white transition">
-                      {link}
-                    </a>
-                  </li>
-                ))}
+                {links.map((link) => {
+                  // Simple helper to generate href from label if strictly following the pattern
+                  // However, for robustness, defining them explicitly or using a switch/map is better.
+                  // Given the user just gave lists of strings in the prompt, I will map them dynamically.
+                  const getHref = (label: string) => {
+                    const map: Record<string, string> = {
+                      "Features": "/features",
+                      "Events": "/events",
+                      "Security": "/security",
+                      "Help Center": "/help-center",
+                      "Contact Us": "/contact",
+                      "Status": "/status",
+                    };
+                    return map[label] || "#";
+                  };
+
+                  return (
+                    <li key={link}>
+                      <Link href={getHref(link)} className="hover:text-white transition">
+                        {link}
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
@@ -80,7 +97,7 @@ export const Footer: React.FC = () => {
         {/* Bottom Footer */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-6">
           <p className="text-slate-400 text-sm">
-            &copy; 2025 EventMS. All rights reserved.
+            &copy; {new Date().getFullYear()} EventMS. All rights reserved.
           </p>
           <div className="flex items-center gap-4 mt-6 md:mt-0">
             {socialLinks.map((link) => (

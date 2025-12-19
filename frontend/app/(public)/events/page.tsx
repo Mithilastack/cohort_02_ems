@@ -1,41 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Calendar, MapPin, Users, IndianRupee, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Calendar, MapPin, Users, IndianRupee, Filter, ChevronLeft, ChevronRight, Sparkles, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 
-interface Event {
-    _id: string
-    title: string
-    description: string
-    date: string
-    time: string
-    venue: string
-    category: string
-    bannerUrl: string
-    totalSeats: number
-    availableSeats: number
-    price: number
-    registrationStatus: string
-    computedRegistrationStatus: string
-}
 
-interface EventsResponse {
-    success: boolean
-    message: string
-    data: {
-        events: Event[]
-        pagination: {
-            page: number
-            limit: number
-            total: number
-            pages: number
-        }
-    }
-}
+import { fetchEvents, Event, EventsResponse } from '@/lib/eventApi'
+import { fetchWishlist, addToWishlist, removeFromWishlist, WishlistEvent } from '@/lib/wishlistApi'
 
 const CATEGORIES = [
     'All Categories',
@@ -55,10 +28,15 @@ const CATEGORIES = [
 export default function EventsPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const categoriesRef = useRef<HTMLDivElement>(null)
 
     const [events, setEvents] = useState<Event[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
+
+    // Wishlist
+    const [wishlistEventIds, setWishlistEventIds] = useState<Set<string>>(new Set())
+    const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({})
 
     // Pagination & Filters
     const [currentPage, setCurrentPage] = useState(1)
@@ -67,6 +45,24 @@ export default function EventsPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('All Categories')
     const [debouncedSearch, setDebouncedSearch] = useState('')
+
+    // Fetch wishlist on mount
+    useEffect(() => {
+        const loadWishlist = async () => {
+            try {
+                const data = await fetchWishlist()
+                if (data.success) {
+                    const ids = new Set(data.data.wishlist.map(event => event._id))
+                    setWishlistEventIds(ids)
+                }
+            } catch (err) {
+                // User might not be logged in, silently fail
+                console.log('Could not fetch wishlist:', err)
+            }
+        }
+
+        loadWishlist()
+    }, [])
 
     // Debounce search input
     useEffect(() => {
@@ -80,28 +76,17 @@ export default function EventsPage() {
 
     // Fetch events
     useEffect(() => {
-        const fetchEvents = async () => {
+        const loadEvents = async () => {
             try {
                 setIsLoading(true)
                 setError('')
 
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-
-                // Build query parameters
-                const params = new URLSearchParams({
-                    page: currentPage.toString(),
-                    limit: '9', // 3x3 grid
+                const data = await fetchEvents({
+                    page: currentPage,
+                    limit: 9,
                     search: debouncedSearch,
-                    category: selectedCategory === 'All Categories' ? '' : selectedCategory
+                    category: selectedCategory
                 })
-
-                const response = await fetch(`${apiUrl}/events?${params.toString()}`)
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch events')
-                }
-
-                const data: EventsResponse = await response.json()
 
                 if (data.success) {
                     setEvents(data.data.events)
@@ -115,7 +100,7 @@ export default function EventsPage() {
             }
         }
 
-        fetchEvents()
+        loadEvents()
     }, [currentPage, debouncedSearch, selectedCategory])
 
     const handleCategoryChange = (category: string) => {
@@ -128,6 +113,60 @@ export default function EventsPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+    const handleWishlistToggle = async (eventId: string, e: React.MouseEvent) => {
+        e.stopPropagation() // Prevent navigation to event details
+
+        // Check if user is logged in
+        const token = typeof window !== 'undefined'
+            ? document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1]
+            : null
+
+        if (!token) {
+            router.push('/login?redirect=/events')
+            return
+        }
+
+        const isInWishlist = wishlistEventIds.has(eventId)
+
+        // Optimistic update
+        setWishlistEventIds(prev => {
+            const newSet = new Set(prev)
+            if (isInWishlist) {
+                newSet.delete(eventId)
+            } else {
+                newSet.add(eventId)
+            }
+            return newSet
+        })
+
+        setWishlistLoading(prev => ({ ...prev, [eventId]: true }))
+
+        try {
+            if (isInWishlist) {
+                await removeFromWishlist(eventId)
+            } else {
+                await addToWishlist(eventId)
+            }
+        } catch (err) {
+            // Rollback on error
+            setWishlistEventIds(prev => {
+                const newSet = new Set(prev)
+                if (isInWishlist) {
+                    newSet.add(eventId)
+                } else {
+                    newSet.delete(eventId)
+                }
+                return newSet
+            })
+            console.error('Wishlist error:', err)
+        } finally {
+            setWishlistLoading(prev => ({ ...prev, [eventId]: false }))
+        }
+    }
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',
@@ -136,275 +175,293 @@ export default function EventsPage() {
         })
     }
 
-    const getStatusBadge = (status: string) => {
-        const badges = {
-            open: 'bg-green-500/20 text-green-400 border-green-500/30',
-            closed: 'bg-red-500/20 text-red-400 border-red-500/30',
-            full: 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+    const getStatusStyle = (status: string) => {
+        const styles = {
+            open: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]',
+            closed: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+            full: 'bg-amber-500/10 text-amber-400 border-amber-500/20'
         }
-        return badges[status as keyof typeof badges] || badges.closed
+        return styles[status as keyof typeof styles] || styles.closed
     }
 
-    if (isLoading && events.length === 0) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-slate-400">Loading events...</p>
-                </div>
-            </div>
-        )
-    }
+    // Scroll active category into center
+    useEffect(() => {
+        if (categoriesRef.current) {
+            const activeCategory = categoriesRef.current.querySelector('[data-active="true"]')
+            if (activeCategory) {
+                activeCategory.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+            }
+        }
+    }, [selectedCategory])
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-            {/* Header */}
-            <div className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="mb-6">
-                        <h1 className="text-4xl font-bold text-white mb-2">
-                            Discover <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">Amazing Events</span>
-                        </h1>
-                        <p className="text-slate-400">Browse and register for upcoming events</p>
-                    </div>
+        <div className="min-h-screen relative overflow-hidden bg-slate-950 text-slate-200 font-sans selection:bg-purple-500/30">
 
-                    {/* Search and Filter Bar */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        {/* Search Input */}
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search events..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
-                            />
-                        </div>
-
-                        {/* Category Filter */}
-                        <div className="sm:w-64 relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => handleCategoryChange(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all appearance-none cursor-pointer"
-                            >
-                                {CATEGORIES.map(category => (
-                                    <option key={category} value={category}>{category}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Results Count */}
-                    {!isLoading && (
-                        <div className="mt-4 text-sm text-slate-400">
-                            Found <span className="text-purple-400 font-semibold">{totalEvents}</span> events
-                        </div>
-                    )}
-                </div>
+            {/* Ambient Background Effects */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-1000" />
+                <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] bg-indigo-500/5 rounded-full blur-[80px]" />
             </div>
 
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
-                        {error}
-                    </div>
-                )}
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col min-h-screen mt-20">
 
-                {events.length === 0 && !isLoading ? (
-                    <Card variant="gradient" className="p-12 text-center">
-                        <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-500" />
-                        <h3 className="text-xl font-semibold text-slate-300 mb-2">No events found</h3>
-                        <p className="text-slate-400 mb-6">
-                            {searchQuery || selectedCategory !== 'All Categories'
-                                ? 'Try adjusting your search or filters'
-                                : 'Check back soon for upcoming events'}
-                        </p>
-                        {(searchQuery || selectedCategory !== 'All Categories') && (
+                {/* Header Section */}
+                <div className="text-center mb-12 space-y-4">
+                    <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 drop-shadow-sm">
+                        Discover <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Events</span>
+                    </h1>
+                    <p className="text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+                        Explore and join extraordinary experiences happening around you.
+                    </p>
+                </div>
+
+                {/* Filters & Search Container */}
+                <div className="sticky top-4 z-20 mb-10 space-y-4">
+                    <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4 shadow-2xl ring-1 ring-white/5">
+                        <div className="flex flex-col md:flex-row gap-6 items-center">
+
+                            {/* Search */}
+                            <div className="relative w-full md:w-96 group">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/30 to-blue-500/30 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
+                                <div className="relative flex items-center bg-slate-800/80 rounded-xl overflow-hidden border border-white/10 focus-within:border-purple-500/50 transition-colors">
+                                    <Search className="absolute left-4 w-5 h-5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search events..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-12 pr-4 py-3 bg-transparent text-white placeholder:text-slate-500 focus:outline-none"
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-4 text-xs text-slate-500 hover:text-white transition-colors"
+                                        >
+                                            CLEAR
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Divider (Desktop) */}
+                            <div className="hidden md:block h-8 w-px bg-white/10"></div>
+
+                            {/* Categories */}
+                            <div className="w-full overflow-hidden relative">
+                                <div
+                                    ref={categoriesRef}
+                                    className="flex w-full overflow-x-auto gap-2 pb-2 md:pb-0 scrollbars-hidden mask-linear-fade"
+                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                >
+                                    {CATEGORIES.map(category => (
+                                        <button
+                                            key={category}
+                                            data-active={selectedCategory === category}
+                                            onClick={() => handleCategoryChange(category)}
+                                            className={`
+                                                whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300
+                                                border flex-shrink-0
+                                                ${selectedCategory === category
+                                                    ? 'bg-purple-600 border-purple-500 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)] scale-105'
+                                                    : 'bg-slate-800/50 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-white hover:border-white/10'
+                                                }
+                                            `}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Fade indicators for scroll */}
+                                <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-slate-900/60 to-transparent pointer-events-none md:hidden"></div>
+                                <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-slate-900/60 to-transparent pointer-events-none md:hidden"></div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* Results Status */}
+                    <div className="flex justify-between items-center px-2">
+                        <div className="text-sm font-medium text-slate-400">
+                            Showing <span className="text-purple-400">{events.length}</span> results
+                            {totalEvents > 0 && <span className="text-slate-600"> of {totalEvents}</span>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1">
+                    {error && (
+                        <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-center backdrop-blur-sm">
+                            <p className="font-semibold">Unable to load events</p>
+                            <p className="text-sm opacity-80 mt-1">{error}</p>
+                        </div>
+                    )}
+
+                    {isLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {[1, 2, 3, 4, 5, 6].map((n) => (
+                                <div key={n} className="h-[420px] rounded-3xl bg-slate-800/40 animate-pulse border border-white/5"></div>
+                            ))}
+                        </div>
+                    ) : events.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
+                                <Sparkles className="w-10 h-10 text-slate-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-300 mb-2">No events found</h3>
+                            <p className="text-slate-500 max-w-sm mx-auto mb-8">
+                                We couldn't find any events matching your current filters. Try changing categories or search terms.
+                            </p>
                             <Button
                                 onClick={() => {
                                     setSearchQuery('')
                                     setSelectedCategory('All Categories')
                                 }}
-                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                                className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-8"
                             >
-                                Clear Filters
+                                Clear All Filters
                             </Button>
-                        )}
-                    </Card>
-                ) : (
-                    <>
-                        {/* Events Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
                             {events.map(event => (
-                                <Card
+                                <div
                                     key={event._id}
-                                    variant="gradient"
-                                    className="overflow-hidden hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] cursor-pointer group"
+                                    className="group relative bg-slate-900/40 backdrop-blur-sm border border-white/5 rounded-3xl overflow-hidden hover:border-purple-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-900/20 flex flex-col text-left"
                                     onClick={() => router.push(`/events/${event._id}`)}
                                 >
-                                    {/* Event Banner */}
-                                    <div className="h-56 relative overflow-hidden bg-gradient-to-br from-purple-600 to-purple-900">
+
+                                    {/* Image Container */}
+                                    <div className="aspect-[4/3] relative overflow-hidden bg-slate-800">
                                         {event.bannerUrl ? (
                                             <img
                                                 src={event.bannerUrl}
                                                 alt={event.title}
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <Calendar className="w-20 h-20 text-purple-300/30" />
+                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                                                <Calendar className="w-16 h-16 text-slate-600/50" />
                                             </div>
                                         )}
+                                        {/* Overlay */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80"></div>
 
-                                        {/* Gradient Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent"></div>
+                                        {/* Wishlist Button */}
+                                        <button
+                                            onClick={(e) => handleWishlistToggle(event._id, e)}
+                                            disabled={wishlistLoading[event._id]}
+                                            className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:scale-110 hover:bg-slate-800 transition-all duration-300 z-10"
+                                        >
+                                            <Heart
+                                                className={`w-5 h-5 transition-all duration-300 ${wishlistEventIds.has(event._id)
+                                                    ? 'fill-red-500 text-red-500'
+                                                    : 'text-white hover:text-red-400'
+                                                    }`}
+                                            />
+                                        </button>
 
-                                        {/* Category Badge */}
-                                        <div className="absolute top-3 left-3">
-                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-600/90 text-white backdrop-blur-sm border border-purple-400/30">
+                                        {/* Floating Badge */}
+                                        <div className="absolute top-4 left-4">
+                                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 backdrop-blur-md border border-white/10 text-white shadow-lg">
                                                 {event.category}
                                             </span>
                                         </div>
 
-                                        {/* Registration Status Badge */}
-                                        <div className="absolute top-3 right-3">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm border ${getStatusBadge(event.computedRegistrationStatus || event.registrationStatus)}`}>
+                                        {/* Status Badge */}
+                                        <div className="absolute top-4 right-4">
+                                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md border ${getStatusStyle(event.computedRegistrationStatus || event.registrationStatus)}`}>
                                                 {(event.computedRegistrationStatus || event.registrationStatus).toUpperCase()}
                                             </span>
                                         </div>
                                     </div>
 
-                                    {/* Event Details */}
-                                    <div className="p-6">
-                                        <h3 className="text-xl font-bold text-white mb-3 line-clamp-2 group-hover:text-purple-400 transition-colors">
-                                            {event.title}
-                                        </h3>
-
-                                        <div className="space-y-2 text-sm text-slate-400 mb-4">
-                                            {/* Date & Time */}
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 flex-shrink-0 text-purple-400" />
-                                                <span>{formatDate(event.date)} • {event.time}</span>
-                                            </div>
-
-                                            {/* Venue */}
-                                            <div className="flex items-center gap-2">
-                                                <MapPin className="w-4 h-4 flex-shrink-0 text-purple-400" />
-                                                <span className="line-clamp-1">{event.venue}</span>
-                                            </div>
-
-                                            {/* Seats */}
-                                            <div className="flex items-center gap-2">
-                                                <Users className="w-4 h-4 flex-shrink-0 text-purple-400" />
-                                                <span>
-                                                    {event.availableSeats} / {event.totalSeats} seats available
-                                                </span>
+                                    {/* Card Content */}
+                                    <div className="p-6 flex flex-col flex-grow">
+                                        <div className="mb-4">
+                                            <h3 className="text-2xl font-bold text-white mb-2 leading-tight group-hover:text-purple-400 transition-colors line-clamp-2">
+                                                {event.title}
+                                            </h3>
+                                            <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                                <Calendar className="w-4 h-4 text-purple-500" />
+                                                <span>{formatDate(event.date)}</span>
+                                                <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                                <span>{event.time}</span>
                                             </div>
                                         </div>
 
-                                        {/* Seats Progress Bar */}
-                                        <div className="mb-4">
-                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="space-y-3 mb-6 flex-grow">
+                                            <div className="flex items-center gap-3 text-sm text-slate-400">
+                                                <MapPin className="w-4 h-4 text-purple-500/70" />
+                                                <span className="line-clamp-1">{event.venue}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-sm text-slate-400">
+                                                <Users className="w-4 h-4 text-purple-500/70" />
+                                                <span>{event.availableSeats} <span className="text-slate-600">/</span> {event.totalSeats} seats left</span>
+                                            </div>
+
+                                            {/* Progress Bar */}
+                                            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mt-2">
                                                 <div
-                                                    className="h-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-500"
-                                                    style={{
-                                                        width: `${((event.totalSeats - event.availableSeats) / event.totalSeats) * 100}%`
-                                                    }}
+                                                    className="h-full bg-gradient-to-r from-purple-600 to-indigo-500"
+                                                    style={{ width: `${Math.max(5, ((event.totalSeats - event.availableSeats) / event.totalSeats) * 100)}%` }}
                                                 ></div>
                                             </div>
                                         </div>
 
-                                        {/* Price */}
-                                        <div className="border-t border-slate-700 pt-4 flex items-center justify-between">
-                                            <div className="flex items-center gap-1">
-                                                <IndianRupee className="w-5 h-5 text-purple-400" />
-                                                <span className="text-2xl font-bold text-purple-400">
-                                                    {event.price.toLocaleString('en-IN')}
+                                        <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                                            <div className="flex items-baseline gap-1">
+                                                <IndianRupee className="w-4 h-4 text-slate-400 self-center" />
+                                                <span className="text-2xl font-bold text-white tracking-tight">
+                                                    {event.price > 0 ? event.price.toLocaleString('en-IN') : 'Free'}
                                                 </span>
                                             </div>
-
                                             <Button
                                                 size="sm"
-                                                className="bg-purple-600 hover:bg-purple-700 text-white"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    router.push(`/events/${event._id}`)
-                                                }}
+                                                className="rounded-full px-6 bg-white text-slate-900 font-semibold hover:bg-purple-50 hover:text-purple-700 transition-colors"
                                             >
-                                                View Details
+                                                Details
                                             </Button>
                                         </div>
                                     </div>
-                                </Card>
+                                </div>
                             ))}
                         </div>
+                    )}
+                </div>
 
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronLeft className="w-5 h-5" />
-                                </Button>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center pb-12">
+                        <div className="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-full p-2 flex gap-2 shadow-xl">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="rounded-full w-10 h-10 hover:bg-white/5 text-slate-400 disabled:opacity-30"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </Button>
 
-                                <div className="flex gap-2">
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
-                                        // Show first page, last page, current page, and pages around current
-                                        const showPage =
-                                            page === 1 ||
-                                            page === totalPages ||
-                                            (page >= currentPage - 1 && page <= currentPage + 1)
-
-                                        if (!showPage) {
-                                            // Show ellipsis
-                                            if (page === currentPage - 2 || page === currentPage + 2) {
-                                                return (
-                                                    <span key={page} className="px-3 py-2 text-slate-500">
-                                                        ...
-                                                    </span>
-                                                )
-                                            }
-                                            return null
-                                        }
-
-                                        return (
-                                            <Button
-                                                key={page}
-                                                variant={currentPage === page ? 'default' : 'outline'}
-                                                onClick={() => handlePageChange(page)}
-                                                className={
-                                                    currentPage === page
-                                                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                                                        : ''
-                                                }
-                                            >
-                                                {page}
-                                            </Button>
-                                        )
-                                    })}
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronRight className="w-5 h-5" />
-                                </Button>
+                            <div className="flex items-center px-4 gap-2">
+                                <span className="text-sm text-slate-400">Page</span>
+                                <span className="text-white font-bold">{currentPage}</span>
+                                <span className="text-sm text-slate-600">of {totalPages}</span>
                             </div>
-                        )}
-                    </>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="rounded-full w-10 h-10 hover:bg-white/5 text-slate-400 disabled:opacity-30"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

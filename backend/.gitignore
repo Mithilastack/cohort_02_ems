@@ -7,7 +7,7 @@ package-lock.json
 yarn.lock
 
 # Environment variables
-.env.local
+.env
 .env.development
 .env.test
 .env.production

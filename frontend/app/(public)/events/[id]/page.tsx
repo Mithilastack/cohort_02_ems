@@ -15,17 +15,17 @@ import {
     ChevronRight,
     AlertCircle,
     CheckCircle2,
-    XCircle
+    XCircle,
+    Heart
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { fetchWishlist, addToWishlist, removeFromWishlist } from '@/lib/wishlistApi'
 
 interface Event {
     _id: string
     title: string
     description: string
-    date: string
-    time: string
     venue: string
     category: string
     bannerUrl: string
@@ -63,6 +63,8 @@ export default function EventDetailsPage() {
     const [event, setEvent] = useState<Event | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
+    const [isInWishlist, setIsInWishlist] = useState(false)
+    const [wishlistLoading, setWishlistLoading] = useState(false)
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -92,6 +94,26 @@ export default function EventDetailsPage() {
         if (eventId) {
             fetchEvent()
         }
+    }, [eventId])
+
+    // Check if event is in wishlist
+    useEffect(() => {
+        const checkWishlist = async () => {
+            if (!eventId) return
+
+            try {
+                const data = await fetchWishlist()
+                if (data.success) {
+                    const inWishlist = data.data.wishlist.some(e => e._id === eventId)
+                    setIsInWishlist(inWishlist)
+                }
+            } catch (err) {
+                // User might not be logged in, silently fail
+                console.log('Could not check wishlist:', err)
+            }
+        }
+
+        checkWishlist()
     }, [eventId])
 
     const formatDate = (dateString: string) => {
@@ -147,6 +169,39 @@ export default function EventDetailsPage() {
         return status === 'open' && event.availableSeats > 0
     }
 
+    const handleWishlistToggle = async () => {
+        // Check if user is logged in
+        const token = typeof window !== 'undefined'
+            ? document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1]
+            : null
+
+        if (!token) {
+            router.push(`/login?redirect=/events/${eventId}`)
+            return
+        }
+
+        // Optimistic update
+        setIsInWishlist(prev => !prev)
+        setWishlistLoading(true)
+
+        try {
+            if (isInWishlist) {
+                await removeFromWishlist(eventId)
+            } else {
+                await addToWishlist(eventId)
+            }
+        } catch (err) {
+            // Rollback on error
+            setIsInWishlist(prev => !prev)
+            console.error('Wishlist error:', err)
+        } finally {
+            setWishlistLoading(false)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -182,7 +237,7 @@ export default function EventDetailsPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
             {/* Breadcrumb & Back Button */}
-            <div className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
+            <div className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-sm mt-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center gap-2 text-sm text-slate-400">
                         <Link href="/" className="hover:text-purple-400 transition-colors">
@@ -228,6 +283,20 @@ export default function EventDetailsPage() {
                                     </div>
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+
+                                {/* Wishlist Button */}
+                                <button
+                                    onClick={handleWishlistToggle}
+                                    disabled={wishlistLoading}
+                                    className="absolute top-6 right-6 w-14 h-14 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10 flex items-center justify-center hover:scale-110 hover:bg-slate-800 transition-all duration-300 z-10 group"
+                                >
+                                    <Heart
+                                        className={`w-6 h-6 transition-all duration-300 ${isInWishlist
+                                            ? 'fill-red-500 text-red-500'
+                                            : 'text-white group-hover:text-red-400'
+                                            }`}
+                                    />
+                                </button>
                             </div>
                         </Card>
 
@@ -432,14 +501,14 @@ export default function EventDetailsPage() {
                                         <Calendar className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                                         <div>
                                             <p className="text-slate-400 mb-1">Date</p>
-                                            <p className="text-white font-medium">{formatShortDate(event.date)}</p>
+                                            <p className="text-white font-medium">{formatShortDate(event.eventStartDate)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Clock className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
                                         <div>
                                             <p className="text-slate-400 mb-1">Time</p>
-                                            <p className="text-white font-medium">{event.time}</p>
+                                            <p className="text-white font-medium">{event.startTime}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
@@ -461,7 +530,7 @@ export default function EventDetailsPage() {
                         </Card>
                     </div>
                 </div>
-                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2531.8140527327923!2d85.86164141633729!3d26.17958179259272!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39edb75b85cc6827%3A0x6323aca3b97a9fe1!2sDarbhanga%20College%20of%20Engineering%2C%20Darbhanga!5e0!3m2!1sen!2sin!4v1766041030742!5m2!1sen!2sin" width="600" height="450" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+
             </div>
         </div>
     )
