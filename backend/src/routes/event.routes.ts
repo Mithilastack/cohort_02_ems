@@ -4,6 +4,7 @@ import {
     getAllEvents,
     getEventById,
     updateEvent,
+    updateEventStatus,
     deleteEvent,
 } from '../controllers/event.controller';
 import { authenticate } from '../middlewares/auth.middleware';
@@ -19,6 +20,7 @@ router.get('/:id', getEventById);
 // Protected Admin routes (with file upload support for banner)
 router.post('/', authenticate, isAdmin, uploadBanner, createEvent);
 router.put('/:id', authenticate, isAdmin, uploadBanner, updateEvent);
+router.patch('/:id/status', authenticate, isAdmin, updateEventStatus);
 router.delete('/:id', authenticate, isAdmin, deleteEvent);
 
 export default router;

@@ -50,12 +50,16 @@ export default function LoginPage() {
       if (response.success && response.data.token) {
         // Store token in cookies
         document.cookie = `token=${response.data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
-        
+
         // Store user data in cookies (optional)
         document.cookie = `user=${JSON.stringify(response.data.user)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
 
-        // Redirect to dashboard/home
-        router.push('/')
+        // Redirect based on user role
+        if (response.data.user.role === 'admin') {
+          router.push('/admin')
+        } else {
+          router.push('/')
+        }
       }
     } catch (error) {
       setErrors({ general: error instanceof Error ? error.message : 'Login failed. Please try again.' })
@@ -146,7 +150,7 @@ export default function LoginPage() {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-      
+
           </form>
 
           {/* Sign Up Link */}

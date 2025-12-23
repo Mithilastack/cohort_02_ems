@@ -65,6 +65,11 @@ export default function EventDetailsPage() {
     const [error, setError] = useState('')
     const [isInWishlist, setIsInWishlist] = useState(false)
     const [wishlistLoading, setWishlistLoading] = useState(false)
+    const [showQuantityModal, setShowQuantityModal] = useState(false)
+    const [quantity, setQuantity] = useState(1)
+    const [bookingLoading, setBookingLoading] = useState(false)
+    const [bookingError, setBookingError] = useState('')
+    const [bookingSuccess, setBookingSuccess] = useState(false)
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -199,6 +204,78 @@ export default function EventDetailsPage() {
             console.error('Wishlist error:', err)
         } finally {
             setWishlistLoading(false)
+        }
+    }
+
+    const handleRegisterClick = () => {
+        // Check if user is logged in
+        const token = typeof window !== 'undefined'
+            ? document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1]
+            : null
+
+        if (!token) {
+            router.push(`/login?redirect=/events/${eventId}`)
+            return
+        }
+
+        // Reset states and show modal
+        setQuantity(1)
+        setBookingError('')
+        setBookingSuccess(false)
+        setShowQuantityModal(true)
+    }
+
+    const handleBooking = async () => {
+        setBookingLoading(true)
+        setBookingError('')
+        setBookingSuccess(false)
+
+        try {
+            const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1]
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+            const response = await fetch(`${apiUrl}/bookings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    eventId: eventId,
+                    quantity: quantity
+                })
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to create booking')
+            }
+
+            setBookingSuccess(true)
+            // Refresh event data to update available seats
+            setTimeout(() => {
+                window.location.reload()
+            }, 2000)
+        } catch (err) {
+            setBookingError(err instanceof Error ? err.message : 'Failed to create booking')
+        } finally {
+            setBookingLoading(false)
+        }
+    }
+
+    const handleCloseModal = () => {
+        if (!bookingLoading) {
+            setShowQuantityModal(false)
+            setQuantity(1)
+            setBookingError('')
+            setBookingSuccess(false)
         }
     }
 
@@ -477,6 +554,7 @@ export default function EventDetailsPage() {
 
                                 {/* Register Button */}
                                 <Button
+                                    onClick={handleRegisterClick}
                                     className={`w-full py-6 text-lg font-semibold ${canRegister()
                                         ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white'
                                         : 'bg-slate-700 text-slate-400 cursor-not-allowed'
@@ -532,6 +610,132 @@ export default function EventDetailsPage() {
                 </div>
 
             </div>
+
+            {/* Quantity Modal */}
+            {showQuantityModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <Card variant="gradient" className="w-full max-w-md">
+                        <div className="p-6">
+                            <h3 className="text-2xl font-bold text-white mb-2">Complete Registration</h3>
+                            <p className="text-slate-400 mb-6">How many seats would you like to book?</p>
+
+                            {!bookingSuccess ? (
+                                <>
+                                    {/* Quantity Selector */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-slate-300 mb-3">
+                                            Number of Seats
+                                        </label>
+                                        <div className="flex items-center gap-4">
+                                            <Button
+                                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                                disabled={quantity <= 1 || bookingLoading}
+                                                className="w-12 h-12 bg-slate-700 hover:bg-slate-600 text-white disabled:opacity-50"
+                                            >
+                                                -
+                                            </Button>
+                                            <div className="flex-1 text-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={event?.availableSeats || 1}
+                                                    value={quantity}
+                                                    onChange={(e) => {
+                                                        const val = parseInt(e.target.value) || 1
+                                                        setQuantity(Math.min(Math.max(1, val), event?.availableSeats || 1))
+                                                    }}
+                                                    disabled={bookingLoading}
+                                                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-center text-2xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={() => setQuantity(Math.min((event?.availableSeats || 1), quantity + 1))}
+                                                disabled={quantity >= (event?.availableSeats || 1) || bookingLoading}
+                                                className="w-12 h-12 bg-slate-700 hover:bg-slate-600 text-white disabled:opacity-50"
+                                            >
+                                                +
+                                            </Button>
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-2">
+                                            Available seats: {event?.availableSeats}
+                                        </p>
+                                    </div>
+
+                                    {/* Price Summary */}
+                                    <div className="mb-6 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-slate-400">Price per seat:</span>
+                                            <div className="flex items-center gap-1">
+                                                <IndianRupee className="w-4 h-4 text-slate-400" />
+                                                <span className="text-white font-medium">
+                                                    {event?.price.toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+                                            <span className="text-white font-semibold">Total Amount:</span>
+                                            <div className="flex items-center gap-1">
+                                                <IndianRupee className="w-5 h-5 text-purple-400" />
+                                                <span className="text-2xl font-bold text-white">
+                                                    {((event?.price || 0) * quantity).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Error Message */}
+                                    {bookingError && (
+                                        <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 flex items-start gap-2">
+                                            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                                            <p className="text-sm text-red-400">{bookingError}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-3">
+                                        <Button
+                                            onClick={handleCloseModal}
+                                            disabled={bookingLoading}
+                                            variant="outline"
+                                            className="flex-1 py-3"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            onClick={handleBooking}
+                                            disabled={bookingLoading}
+                                            className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white"
+                                        >
+                                            {bookingLoading ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    Processing...
+                                                </div>
+                                            ) : (
+                                                'Confirm Booking'
+                                            )}
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Success State */
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                                        <CheckCircle2 className="w-10 h-10 text-green-400" />
+                                    </div>
+                                    <h4 className="text-xl font-semibold text-white mb-2">Booking Successful!</h4>
+                                    <p className="text-slate-400 mb-6">
+                                        Your booking for {quantity} seat{quantity > 1 ? 's' : ''} has been confirmed.
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        Redirecting...
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     )
 }

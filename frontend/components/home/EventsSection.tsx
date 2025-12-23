@@ -55,6 +55,41 @@ export const EventsSection: React.FC = () => {
     });
   };
 
+  const handleToggleWishlist = async (eventId: string) => {
+    const isCurrentlyWishlisted = wishlistEventIds.has(eventId);
+
+    // Optimistic update
+    setWishlistEventIds(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyWishlisted) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+
+    try {
+      if (isCurrentlyWishlisted) {
+        await removeFromWishlist(eventId);
+      } else {
+        await addToWishlist(eventId);
+      }
+    } catch (error) {
+      // Revert on error
+      setWishlistEventIds(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyWishlisted) {
+          newSet.add(eventId);
+        } else {
+          newSet.delete(eventId);
+        }
+        return newSet;
+      });
+      console.error('Failed to update wishlist:', error);
+    }
+  };
+
   return (
     <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/50 border-y border-slate-800">
       <div className="max-w-6xl mx-auto">
@@ -86,6 +121,8 @@ export const EventsSection: React.FC = () => {
                   image={event.bannerUrl || "bg-gradient-to-br from-purple-600 to-pink-600"} // Fallback or handling for color vs url
                   attendees={`${event.totalSeats - event.availableSeats} attending`}
                   onBookNow={() => router.push(`/events/${event._id}`)}
+                  isWishlisted={wishlistEventIds.has(event._id)}
+                  onToggleWishlist={() => handleToggleWishlist(event._id)}
                 />
               ))}
             </div>

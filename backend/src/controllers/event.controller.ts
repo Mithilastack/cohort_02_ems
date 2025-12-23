@@ -229,6 +229,59 @@ export const updateEvent = async (
 };
 
 /**
+ * @desc    Update event registration status
+ * @route   PATCH /api/events/:id/status
+ * @access  Private/Admin
+ */
+export const updateEventStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const { registrationStatus } = req.body;
+
+        // Validate status value
+        const validStatuses = ['comingsoon', 'open', 'closed'];
+        if (!registrationStatus || !validStatuses.includes(registrationStatus)) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid status. Must be one of: comingsoon, open, closed',
+            });
+            return;
+        }
+
+        const event = await eventService.updateEvent(req.params.id, { registrationStatus });
+
+        res.status(200).json({
+            success: true,
+            message: 'Event status updated successfully',
+            data: { event },
+        });
+    } catch (error: any) {
+        logger.error('Error updating event status:', error);
+
+        if (error.message === 'Invalid event ID') {
+            res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+            return;
+        }
+
+        if (error.message === 'Event not found') {
+            res.status(404).json({
+                success: false,
+                message: error.message,
+            });
+            return;
+        }
+
+        next(error);
+    }
+};
+
+/**
  * @desc    Delete event
  * @route   DELETE /api/events/:id
  * @access  Private/Admin

@@ -130,7 +130,7 @@ export const getAllBookings = async (
         const { status, page, limit } = req.query;
 
         const filters = {
-            status: status as 'booked' | 'cancelled' | 'completed',
+            status: status as 'pending' | 'confirmed' | 'cancelled',
             page: page ? parseInt(page as string) : undefined,
             limit: limit ? parseInt(limit as string) : undefined,
         };
@@ -169,10 +169,10 @@ export const updateBookingStatus = async (
             return;
         }
 
-        if (!['booked', 'cancelled', 'completed'].includes(status)) {
+        if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
             res.status(400).json({
                 success: false,
-                message: 'Invalid status. Must be: booked, cancelled, or completed',
+                message: 'Invalid status. Must be: pending, confirmed, or cancelled',
             });
             return;
         }

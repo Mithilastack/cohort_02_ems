@@ -30,7 +30,7 @@ export const signup = async (name: string, email: string, password: string) => {
     await user.save();
 
     // Generate JWT token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user._id.toString(), user.role, user.email);
 
     return {
         token,
@@ -70,7 +70,7 @@ export const login = async (email: string, password: string) => {
     }
 
     // Generate JWT token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user._id.toString(), user.role, user.email);
 
     return {
         token,

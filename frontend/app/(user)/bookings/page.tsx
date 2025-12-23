@@ -9,14 +9,22 @@ import { Card } from '@/components/ui/Card'
 
 interface Booking {
   _id: string
-  eventId: string
-  eventName: string
-  eventDate: string
-  eventLocation: string
-  ticketCount: number
-  totalPrice: number
+  event: {
+    _id: string
+    title: string
+    description: string
+    date: string
+    time: string
+    venue: string
+    category: string
+    bannerUrl: string
+  }
+  quantity: number
+  totalAmount: number
   status: string
+  bookedAt: string
   createdAt: string
+  updatedAt: string
 }
 
 export default function BookingsPage() {
@@ -41,7 +49,7 @@ export default function BookingsPage() {
         }
 
         // TODO: Update endpoint when booking API is ready
-        const response = await fetch(`${apiUrl}/bookings`, {
+        const response = await fetch(`${apiUrl}/bookings/my-bookings`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -114,7 +122,7 @@ export default function BookingsPage() {
       <div className="border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-4 mb-6">
-            <Link href="/user/dashboard">
+            <Link href="/user">
               <Button variant="outline" size="icon" className="text-slate-400">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -131,11 +139,10 @@ export default function BookingsPage() {
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === status
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === status
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
@@ -176,19 +183,18 @@ export default function BookingsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-slate-50">
-                      {booking.eventName}
+                      {booking.event.title}
                     </h3>
                     <p className="text-sm text-slate-400 mt-1">
                       Booking ID: {booking._id.slice(-8)}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-4 ${
-                    booking.status === 'active'
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-4 ${booking.status === 'active'
                       ? 'bg-green-500/20 text-green-400'
                       : booking.status === 'completed'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
                     {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                   </span>
                 </div>
@@ -196,35 +202,32 @@ export default function BookingsPage() {
                 <div className="space-y-3 mb-6 text-sm text-slate-400">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Calendar className="w-4 h-4 flex-shrink-0" />
-                    <span>{new Date(booking.eventDate).toLocaleDateString('en-US', {
+                    <span>{new Date(booking.event.date).toLocaleDateString('en-US', {
                       weekday: 'short',
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric'
                     })}</span>
                     <Clock className="w-4 h-4 flex-shrink-0" />
-                    <span>{new Date(booking.eventDate).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}</span>
+                    <span>{booking.event.time}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
-                    {booking.eventLocation}
+                    {booking.event.venue}
                   </div>
                   <div className="flex items-center gap-3">
                     <Users className="w-4 h-4 flex-shrink-0" />
-                    {booking.ticketCount} {booking.ticketCount === 1 ? 'ticket' : 'tickets'}
+                    {booking.quantity} {booking.quantity === 1 ? 'ticket' : 'tickets'}
                   </div>
                 </div>
 
                 <div className="border-t border-slate-700 pt-4 mb-4 flex items-center justify-between">
                   <span className="text-slate-400">Total Amount:</span>
-                  <span className="text-lg font-bold text-purple-400">₹{booking.totalPrice.toLocaleString('en-IN')}</span>
+                  <span className="text-lg font-bold text-purple-400">₹{booking.totalAmount.toLocaleString('en-IN')}</span>
                 </div>
 
                 <div className="flex gap-2">
-                  <Link href={`/events/${booking.eventId}`} className="flex-1">
+                  <Link href={`/events/${booking.event._id}`} className="flex-1">
                     <Button className="w-full bg-slate-800 hover:bg-slate-700 text-slate-50 border border-slate-700">
                       <Eye className="w-4 h-4 mr-2" />
                       View Event

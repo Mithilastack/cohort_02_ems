@@ -7,7 +7,7 @@ export interface IBooking extends Document {
     event: mongoose.Types.ObjectId;
     quantity: number;
     totalAmount: number;
-    status: 'booked' | 'cancelled' | 'completed';
+    status: 'pending' | 'confirmed' | 'cancelled';
     bookedAt: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -38,8 +38,8 @@ const bookingSchema = new Schema<IBooking>(
         },
         status: {
             type: String,
-            enum: ['booked', 'cancelled', 'completed'],
-            default: 'booked',
+            enum: ['pending', 'confirmed', 'cancelled'],
+            default: 'pending',
         },
         bookedAt: {
             type: Date,

@@ -1,5 +1,5 @@
 "use client";
-import { HeroSection } from "@/components/home/HeroSection";
+import Hero from "@/components/home/HeroSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { HowItWorksSection } from "@/components/home/HowItWorksSection";
 import { EventsSection } from "@/components/home/EventsSection";
@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
       {/* Hero Section */}
-      <HeroSection />
+      <Hero />
       {/* Features Section */}
       <FeaturesSection />
       {/* How It Works Section */}

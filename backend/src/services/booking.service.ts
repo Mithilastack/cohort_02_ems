@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 
 interface BookingFilters {
-    status?: 'booked' | 'cancelled' | 'completed';
+    status?: 'pending' | 'confirmed' | 'cancelled';
     page?: number;
     limit?: number;
 }
@@ -42,7 +42,7 @@ export const createBooking = async (userId: string, eventId: string, quantity: n
         event: eventId,
         quantity,
         totalAmount,
-        status: 'booked',
+        status: 'pending',
     });
 
     // Reduce available seats
@@ -123,7 +123,7 @@ export const getAllBookings = async (filters: BookingFilters) => {
  * @param status - New status
  * @returns Updated booking
  */
-export const updateBookingStatus = async (bookingId: string, status: 'booked' | 'cancelled' | 'completed') => {
+export const updateBookingStatus = async (bookingId: string, status: 'pending' | 'confirmed' | 'cancelled') => {
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
         throw new Error('Invalid booking ID');
     }
