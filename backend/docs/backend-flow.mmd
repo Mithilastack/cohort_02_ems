@@ -1,0 +1,108 @@
+graph TB
+    %% Client Layer
+    Client[Client Application<br/>Frontend/Mobile]
+    
+    %% Entry Point
+    Client -->|HTTP Request| ExpressApp[Express Application<br/>app.ts]
+    
+    %% Middleware Layer
+    ExpressApp --> Middleware{Middleware Pipeline}
+    Middleware --> CORS[CORS]
+    Middleware --> Morgan[Morgan Logger]
+    Middleware --> BodyParser[Body Parser<br/>JSON & URL Encoded]
+    
+    %% Route Distribution
+    CORS & Morgan & BodyParser --> Router{Route Handler}
+    
+    %% Authentication Routes
+    Router -->|/api/auth| AuthRoutes[Auth Routes]
+    AuthRoutes --> AuthMiddleware[Auth Middleware<br/>JWT Verification]
+    AuthRoutes --> AuthController[Auth Controller]
+    AuthController --> AuthService[Auth Service]
+    AuthService --> UserModel[(User Model<br/>MongoDB)]
+    AuthService --> OTPModel[(OTP Model<br/>MongoDB)]
+    
+    %% User/Profile Routes
+    Router -->|/api/profile| UserRoutes[User Routes]
+    UserRoutes --> AuthMiddleware
+    UserRoutes --> UserController[User Controller]
+    UserController --> UserService[User Service]
+    UserService --> UserModel
+    
+    %% Event Routes
+    Router -->|/api/events| EventRoutes[Event Routes]
+    EventRoutes --> AuthMiddleware
+    EventRoutes --> EventController[Event Controller]
+    EventController --> EventService[Event Service]
+    EventService --> EventModel[(Event Model<br/>MongoDB)]
+    EventService --> UploadService[Upload Service<br/>Cloudinary]
+    
+    %% Booking Routes
+    Router -->|/api/bookings| BookingRoutes[Booking Routes]
+    BookingRoutes --> AuthMiddleware
+    BookingRoutes --> BookingController[Booking Controller]
+    BookingController --> BookingService[Booking Service]
+    BookingService --> BookingModel[(Booking Model<br/>MongoDB)]
+    BookingService --> EmailService[Email Service<br/>Nodemailer]
+    
+    %% Wishlist Routes
+    Router -->|/api/wishlist| WishlistRoutes[Wishlist Routes]
+    WishlistRoutes --> AuthMiddleware
+    WishlistRoutes --> WishlistController[Wishlist Controller]
+    WishlistController --> WishlistService[Wishlist Service]
+    WishlistService --> UserModel
+    
+    %% Admin Routes
+    Router -->|/api/admin| AdminRoutes[Admin Routes]
+    AdminRoutes --> AuthMiddleware
+    AdminRoutes --> AdminMiddleware[Admin Middleware<br/>Role Check]
+    AdminRoutes --> AdminController[Admin Controller]
+    AdminController --> BookingService
+    AdminController --> EventService
+    AdminController --> UserService
+    
+    %% Error Handling
+    Router --> ErrorHandler[Error Handler Middleware]
+    AuthController --> ErrorHandler
+    UserController --> ErrorHandler
+    EventController --> ErrorHandler
+    BookingController --> ErrorHandler
+    WishlistController --> ErrorHandler
+    AdminController --> ErrorHandler
+    
+    %% Response Flow
+    ErrorHandler --> Response[HTTP Response<br/>JSON]
+    AuthService --> Response
+    UserService --> Response
+    EventService --> Response
+    BookingService --> Response
+    WishlistService --> Response
+    
+    Response --> Client
+    
+    %% External Services
+    UploadService -.->|Upload Images| Cloudinary[Cloudinary CDN]
+    EmailService -.->|Send Emails| EmailServer[Email Server<br/>SMTP]
+    
+    %% Database
+    UserModel -.-> MongoDB[(MongoDB Database)]
+    EventModel -.-> MongoDB
+    BookingModel -.-> MongoDB
+    OTPModel -.-> MongoDB
+    
+    %% Styling
+    classDef clientClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef routeClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef controllerClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef serviceClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef modelClass fill:#fce4ec,stroke:#880e4f,stroke-width:3px
+    classDef middlewareClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef externalClass fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+    
+    class Client clientClass
+    class AuthRoutes,UserRoutes,EventRoutes,BookingRoutes,WishlistRoutes,AdminRoutes routeClass
+    class AuthController,UserController,EventController,BookingController,WishlistController,AdminController controllerClass
+    class AuthService,UserService,EventService,BookingService,WishlistService,UploadService,EmailService serviceClass
+    class UserModel,EventModel,BookingModel,OTPModel,MongoDB modelClass
+    class AuthMiddleware,AdminMiddleware,CORS,Morgan,BodyParser,ErrorHandler middlewareClass
+    class Cloudinary,EmailServer externalClass

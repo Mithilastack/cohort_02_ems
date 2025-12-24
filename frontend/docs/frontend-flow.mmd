@@ -1,0 +1,156 @@
+graph TB
+    %% User Entry
+    User[User/Visitor] -->|Browser Navigation| NextApp[Next.js Application]
+    
+    %% Middleware Layer
+    NextApp --> Middleware{Next.js Middleware<br/>Route Protection}
+    Middleware -->|JWT Verification| AuthCheck{Authentication Check}
+    AuthCheck -->|Admin Route| RoleCheck{Role Check}
+    AuthCheck -->|Public Route| AllowAccess[Allow Access]
+    RoleCheck -->|Admin Role| AllowAdminAccess[Allow Admin Access]
+    RoleCheck -->|User Role| RedirectHome[Redirect to Home]
+    AuthCheck -->|Protected Route| TokenCheck{Token Valid?}
+    TokenCheck -->|Valid| AllowAccess
+    TokenCheck -->|Invalid| RedirectLogin[Redirect to Login]
+    
+    %% Route Groups
+    AllowAccess --> RouteGroups{Route Groups}
+    
+    %% Public Routes
+    RouteGroups -->|/| PublicRoutes[Public Routes Group]
+    PublicRoutes --> HomePage[Home Page]
+    PublicRoutes --> EventsPage[Events Page]
+    PublicRoutes --> EventDetailsPage[Event Details Page]
+    PublicRoutes --> AboutPage[About Page]
+    PublicRoutes --> ContactPage[Contact Page]
+    PublicRoutes --> FeaturesPage[Features Page]
+    PublicRoutes --> HowItWorksPage[How It Works Page]
+    PublicRoutes --> SecurityPage[Security Page]
+    PublicRoutes --> HelpCenterPage[Help Center Page]
+    PublicRoutes --> StatusPage[Status Page]
+    
+    %% Auth Routes
+    RouteGroups -->|/auth| AuthRoutes[Auth Routes Group]
+    AuthRoutes --> LoginPage[Login Page]
+    AuthRoutes --> RegisterPage[Register Page]
+    AuthRoutes --> ForgotPasswordPage[Forgot Password Page]
+    
+    %% User Dashboard Routes
+    RouteGroups -->|/user| UserRoutes[User Routes Group]
+    UserRoutes --> UserProfilePage[Profile Page]
+    UserRoutes --> WishlistPage[Wishlist Page]
+    UserRoutes --> BookingsPage[My Bookings Page]
+    UserRoutes --> ChangePasswordPage[Change Password Page]
+    UserRoutes --> ResetPasswordPage[Reset Password Page]
+    
+    %% Admin Dashboard Routes
+    AllowAdminAccess --> AdminRoutes[Admin Routes Group]
+    AdminRoutes --> AdminDashboard[Admin Dashboard]
+    AdminRoutes --> AdminEventsPage[Manage Events]
+    AdminRoutes --> AdminEventDetailsPage[Event Details]
+    AdminRoutes --> AdminCreateEventPage[Create Event]
+    AdminRoutes --> AdminEditEventPage[Edit Event]
+    AdminRoutes --> AdminBookingsPage[Manage Bookings]
+    AdminRoutes --> AdminUsersPage[Manage Users]
+    
+    %% Component Layer - Public
+    HomePage --> HeroSection[Hero Section Component]
+    HomePage --> FeaturesSection[Features Section Component]
+    HomePage --> EventsSection[Events Section Component]
+    HomePage --> HowItWorksSection[How It Works Section Component]
+    HomePage --> TestimonialsSection[Testimonials Section Component]
+    HomePage --> CTASection[CTA Section Component]
+    
+    EventsPage --> EventCard[Event Card Component]
+    FeaturesSection --> FeatureCard[Feature Card Component]
+    TestimonialsSection --> TestimonialCard[Testimonial Card Component]
+    
+    %% Layout Components
+    PublicRoutes --> PublicLayout[Public Layout]
+    PublicLayout --> Navbar[Navbar Component]
+    PublicLayout --> Footer[Footer Component]
+    
+    UserRoutes --> UserLayout[User Layout]
+    AdminRoutes --> AdminLayout[Admin Layout]
+    AdminLayout --> AdminNavbar[Admin Navbar Component]
+    
+    %% UI Components Library
+    HeroSection --> UIComponents{UI Components}
+    EventCard --> UIComponents
+    LoginPage --> UIComponents
+    AdminDashboard --> UIComponents
+    
+    UIComponents --> Button[Button Component]
+    UIComponents --> Card[Card Component]
+    UIComponents --> Input[Input Component]
+    UIComponents --> Label[Label Component]
+    UIComponents --> Badge[Badge Component]
+    UIComponents --> Table[Table Component]
+    UIComponents --> FormField[Form Field Component]
+    UIComponents --> Separator[Separator Component]
+    UIComponents --> Spotlight[Spotlight Component]
+    
+    %% API Layer
+    LoginPage --> AuthAPI[Auth API<br/>authApi.ts]
+    RegisterPage --> AuthAPI
+    ForgotPasswordPage --> AuthAPI
+    
+    EventsPage --> EventAPI[Event API<br/>eventApi.ts]
+    EventDetailsPage --> EventAPI
+    
+    WishlistPage --> WishlistAPI[Wishlist API<br/>wishlistApi.ts]
+    
+    AdminDashboard --> AdminAPI[Admin API<br/>adminApi.ts]
+    AdminEventsPage --> AdminAPI
+    AdminBookingsPage --> AdminAPI
+    AdminUsersPage --> AdminAPI
+    
+    %% API to Backend
+    AuthAPI -->|HTTP Requests| BackendAuth[Backend /api/auth]
+    EventAPI -->|HTTP Requests| BackendEvents[Backend /api/events]
+    WishlistAPI -->|HTTP Requests| BackendWishlist[Backend /api/wishlist]
+    AdminAPI -->|HTTP Requests| BackendAdmin[Backend /api/admin]
+    AdminAPI -->|HTTP Requests| BackendBookings[Backend /api/bookings]
+    
+    %% State Management
+    AuthAPI --> LocalStorage[Local Storage<br/>Token Storage]
+    WishlistAPI --> LocalStorage
+    EventAPI --> LocalStorage
+    AdminAPI --> LocalStorage
+    
+    %% Utilities
+    AuthAPI --> Utils[Utils<br/>utils.ts]
+    EventAPI --> Utils
+    WishlistAPI --> Utils
+    AdminAPI --> Utils
+    
+    %% Response Flow Back to User
+    BackendAuth --> AuthAPI
+    BackendEvents --> EventAPI
+    BackendWishlist --> WishlistAPI
+    BackendAdmin --> AdminAPI
+    BackendBookings --> AdminAPI
+    
+    UIComponents --> RenderPage[Rendered Page]
+    RenderPage --> User
+    
+    %% Styling
+    classDef userClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef routeClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef componentClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef apiClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef backendClass fill:#fce4ec,stroke:#880e4f,stroke-width:3px
+    classDef middlewareClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef uiClass fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+    classDef storageClass fill:#fbe9e7,stroke:#bf360c,stroke-width:2px
+    
+    class User,RenderPage userClass
+    class PublicRoutes,AuthRoutes,UserRoutes,AdminRoutes routeClass
+    class HomePage,EventsPage,EventDetailsPage,AboutPage,ContactPage,LoginPage,RegisterPage,UserProfilePage,WishlistPage,BookingsPage,AdminDashboard,AdminEventsPage,AdminBookingsPage,AdminUsersPage componentClass
+    class HeroSection,FeaturesSection,EventsSection,EventCard,Navbar,Footer,AdminNavbar,FeatureCard,TestimonialCard,CTASection,HowItWorksSection,TestimonialsSection componentClass
+    class PublicLayout,UserLayout,AdminLayout componentClass
+    class Button,Card,Input,Label,Badge,Table,FormField,Separator,Spotlight uiClass
+    class AuthAPI,EventAPI,WishlistAPI,AdminAPI,Utils apiClass
+    class BackendAuth,BackendEvents,BackendWishlist,BackendAdmin,BackendBookings backendClass
+    class Middleware,AuthCheck,RoleCheck,TokenCheck middlewareClass
+    class LocalStorage storageClass
