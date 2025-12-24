@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { getAllUsers, updateUserStatus, type AdminUser } from '@/lib/adminApi'
-import { Search, Shield, ShieldOff, Users, UserCheck, UserX } from 'lucide-react'
+import Link from 'next/link'
+import { Search, Shield, ShieldOff, Users, UserCheck, UserX, Eye } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/Input'
@@ -210,33 +211,40 @@ export default function UsersManagement() {
                                             })}
                                         </TableCell>
                                         <TableCell>
-                                            {user.role !== 'admin' && (
-                                                <Button
-                                                    onClick={() => handleToggleBlock(user._id, user.isBlocked)}
-                                                    disabled={actionLoading === user._id}
-                                                    className={`text-xs transition-all duration-200 ${user.isBlocked
-                                                        ? 'bg-green-600 hover:bg-green-700 hover:shadow-lg hover:shadow-green-600/30'
-                                                        : 'bg-red-600 hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/30'
-                                                        }`}
-                                                >
-                                                    {actionLoading === user._id ? (
-                                                        <span className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                            Loading...
-                                                        </span>
-                                                    ) : user.isBlocked ? (
-                                                        <>
-                                                            <Shield className="h-4 w-4 mr-1" />
-                                                            Unblock
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <ShieldOff className="h-4 w-4 mr-1" />
-                                                            Block
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <Link href={`/admin/users/${user._id}`}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                                {user.role !== 'admin' && (
+                                                    <Button
+                                                        onClick={() => handleToggleBlock(user._id, user.isBlocked)}
+                                                        disabled={actionLoading === user._id}
+                                                        className={`text-xs transition-all duration-200 ${user.isBlocked
+                                                            ? 'bg-green-600 hover:bg-green-700 hover:shadow-lg hover:shadow-green-600/30'
+                                                            : 'bg-red-600 hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/30'
+                                                            }`}
+                                                    >
+                                                        {actionLoading === user._id ? (
+                                                            <span className="flex items-center gap-2">
+                                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                                Loading...
+                                                            </span>
+                                                        ) : user.isBlocked ? (
+                                                            <>
+                                                                <Shield className="h-4 w-4 mr-1" />
+                                                                Unblock
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ShieldOff className="h-4 w-4 mr-1" />
+                                                                Block
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

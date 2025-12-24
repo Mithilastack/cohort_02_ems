@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import Link from 'next/link'
 import { getAllBookings, updateBookingStatus, type AdminBooking } from '@/lib/adminApi'
 import { Ticket, Filter, Users, DollarSign, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -214,13 +215,15 @@ export default function BookingsManagement() {
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
                                         <TableCell className="font-medium">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                                <div>
-                                                    <div className="text-slate-100 font-medium">{booking.user.name}</div>
-                                                    <div className="text-xs text-slate-400">{booking.user.email}</div>
+                                            <Link href={`/admin/users/${booking.user._id}`} className="block">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div>
+                                                        <div className="text-slate-100 font-medium hover:text-blue-400 transition-colors">{booking.user.name}</div>
+                                                        <div className="text-xs text-slate-400">{booking.user.email}</div>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </Link>
                                         </TableCell>
                                         <TableCell>
                                             <div>

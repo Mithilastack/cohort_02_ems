@@ -3,6 +3,7 @@ import {
     getAllUsers,
     updateUserStatus,
     getDashboardStats,
+    getUserDetails,
 } from '../controllers/admin.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { isAdmin } from '../middlewares/admin.middleware';
@@ -14,6 +15,7 @@ router.use(authenticate, isAdmin);
 
 // User Management
 router.get('/users', getAllUsers);
+router.get('/users/:id', getUserDetails);
 router.patch('/users/:id/status', updateUserStatus);
 
 // Dashboard

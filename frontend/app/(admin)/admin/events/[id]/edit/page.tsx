@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { updateEvent, getEventById } from '@/lib/adminApi'
 import { ArrowLeft, Upload } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -24,11 +24,10 @@ const CATEGORIES = [
     'Entertainment'
 ]
 
-export default function EditEvent() {
+export default function EditEvent({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter()
-    const params = useParams()
-    const eventId = params.id as string
 
+    const [eventId, setEventId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [fetchLoading, setFetchLoading] = useState(true)
     const [error, setError] = useState('')
@@ -56,7 +55,16 @@ export default function EditEvent() {
     const [bannerFile, setBannerFile] = useState<File | null>(null)
 
     useEffect(() => {
-        fetchEventData()
+        // Unwrap the params promise first
+        params.then((resolvedParams) => {
+            setEventId(resolvedParams.id)
+        })
+    }, [params])
+
+    useEffect(() => {
+        if (eventId) {
+            fetchEventData()
+        }
     }, [eventId])
 
     // Helper function to format datetime for datetime-local input
@@ -77,6 +85,8 @@ export default function EditEvent() {
     }
 
     const fetchEventData = async () => {
+        if (!eventId) return
+
         try {
             setFetchLoading(true)
             const response = await getEventById(eventId)
@@ -116,6 +126,8 @@ export default function EditEvent() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!eventId) return
+
         setError('')
         setLoading(true)
 

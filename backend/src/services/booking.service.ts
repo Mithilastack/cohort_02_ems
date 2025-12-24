@@ -149,15 +149,40 @@ export const updateBookingStatus = async (bookingId: string, status: 'pending' |
     booking.status = status;
     await booking.save();
 
+    // Populate booking with user and event details for email
+    await booking.populate('user', 'name email');
+    await booking.populate('event', 'title date time venue');
+
     // Send notification email (don't block on this)
     try {
-        logger.info(`Status update notification email should be sent for booking ${booking._id}`);
+        const user = booking.user as any;
+        const event = booking.event as any;
+
+        if (user?.email && event) {
+            // Format date for email
+            const eventDate = new Date(event.date).toLocaleDateString('en-IN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            await emailService.sendBookingStatusUpdateEmail(user.email, {
+                eventTitle: event.title,
+                eventDate: eventDate,
+                eventTime: event.time || 'TBA',
+                venue: event.venue || 'TBA',
+                quantity: booking.quantity,
+                totalAmount: booking.totalAmount,
+                status: status,
+            });
+
+            logger.info(`Status update notification email sent to ${user.email} for booking ${booking._id}`);
+        }
     } catch (emailError) {
         logger.error('Failed to send status update email:', emailError);
+        // Don't throw error - email failure shouldn't block booking update
     }
-
-    await booking.populate('user', 'name email');
-    await booking.populate('event', 'title date venue');
 
     return booking;
 };

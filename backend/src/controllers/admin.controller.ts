@@ -194,3 +194,53 @@ export const getDashboardStats = async (
         next(error);
     }
 };
+
+/**
+ * @desc    Get user details (profile, wishlist, bookings)
+ * @route   GET /api/admin/users/:id
+ * @access  Private/Admin
+ */
+export const getUserDetails = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        // 1. Fetch User (with Wishlist populated)
+        // Note: Wishlist in User model is an array of ObjectIds referencing 'Event'
+        const user = await User.findById(id)
+            .select('-password')
+            .populate({
+                path: 'wishlist',
+                select: 'title date venue bannerUrl category price'
+            });
+
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+            return;
+        }
+
+        // 2. Fetch User's Bookings
+        const bookings = await Booking.find({ user: id })
+            .populate('event', 'title date venue bannerUrl')
+            .sort({ bookedAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            message: 'User details retrieved successfully',
+            data: {
+                user,
+                bookings
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error getting user details:', error);
+        next(error);
+    }
+};

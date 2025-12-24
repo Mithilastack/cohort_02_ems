@@ -122,3 +122,47 @@ export const deleteEvent = async (eventId: string) => {
 
     return event;
 };
+
+/**
+ * Get event details with bookings and user information (Admin only)
+ * @param eventId - Event ID
+ * @returns Event details with bookings
+ */
+export const getEventWithBookings = async (eventId: string) => {
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+        throw new Error('Invalid event ID');
+    }
+
+    const event = await Event.findById(eventId).select('-__v');
+
+    if (!event) {
+        throw new Error('Event not found');
+    }
+
+    // Import Booking model here to avoid circular dependency
+    const { Booking } = await import('../models/Booking.model');
+
+    // Get all bookings for this event with user details populated
+    const bookings = await Booking.find({ event: eventId })
+        .populate('user', 'name email phone createdAt')
+        .select('-__v')
+        .sort({ bookedAt: -1 });
+
+    return {
+        event,
+        bookings,
+        summary: {
+            totalBookings: bookings.length,
+            confirmedBookings: bookings.filter(b => b.status === 'confirmed').length,
+            pendingBookings: bookings.filter(b => b.status === 'pending').length,
+            cancelledBookings: bookings.filter(b => b.status === 'cancelled').length,
+            totalRevenue: bookings
+                .filter(b => b.status !== 'cancelled')
+                .reduce((sum, b) => sum + b.totalAmount, 0),
+            totalSeatsBooked: bookings
+                .filter(b => b.status !== 'cancelled')
+                .reduce((sum, b) => sum + b.quantity, 0),
+        }
+    };
+};
+

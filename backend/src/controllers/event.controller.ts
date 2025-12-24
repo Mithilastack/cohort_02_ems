@@ -320,3 +320,45 @@ export const deleteEvent = async (
         next(error);
     }
 };
+
+/**
+ * @desc    Get event details with bookings
+ * @route   GET /api/events/:id/bookings
+ * @access  Private/Admin
+ */
+export const getEventWithBookings = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const result = await eventService.getEventWithBookings(req.params.id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Event details with bookings retrieved successfully',
+            data: result,
+        });
+    } catch (error: any) {
+        logger.error('Error getting event with bookings:', error);
+
+        if (error.message === 'Invalid event ID') {
+            res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+            return;
+        }
+
+        if (error.message === 'Event not found') {
+            res.status(404).json({
+                success: false,
+                message: error.message,
+            });
+            return;
+        }
+
+        next(error);
+    }
+};
+

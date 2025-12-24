@@ -134,7 +134,53 @@ export async function updateUserStatus(
     return await response.json();
 }
 
+
+export interface UserDetails {
+    user: AdminUser & {
+        wishlist: Array<{
+            _id: string;
+            title: string;
+            date: string;
+            venue: string;
+            category: string;
+            price: number;
+            bannerUrl?: string;
+        }>;
+    };
+    bookings: Array<{
+        _id: string;
+        event: {
+            _id: string;
+            title: string;
+            date: string;
+            venue: string;
+            bannerUrl?: string;
+        };
+        numberOfTickets: number;
+        totalAmount: number;
+        status: 'pending' | 'confirmed' | 'cancelled';
+        bookedAt: string;
+    }>;
+}
+
+export async function getUserDetails(userId: string): Promise<{ success: boolean; data: UserDetails }> {
+    const token = getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${url}/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch user details');
+    }
+
+    return await response.json();
+}
+
 // ========== Event Management ==========
+
 export interface AdminEvent {
     _id: string;
     title: string;
@@ -196,6 +242,50 @@ export async function getEventById(eventId: string): Promise<{ success: boolean;
 
     return await response.json();
 }
+
+// Get event details with bookings and user information
+export interface EventWithBookings {
+    event: AdminEvent;
+    bookings: Array<{
+        _id: string;
+        user: {
+            _id: string;
+            name: string;
+            email: string;
+            phone?: string;
+            createdAt: string;
+        };
+        quantity: number;
+        totalAmount: number;
+        status: 'pending' | 'confirmed' | 'cancelled';
+        bookedAt: string;
+    }>;
+    summary: {
+        totalBookings: number;
+        confirmedBookings: number;
+        pendingBookings: number;
+        cancelledBookings: number;
+        totalRevenue: number;
+        totalSeatsBooked: number;
+    };
+}
+
+export async function getEventWithBookings(eventId: string): Promise<{ success: boolean; data: EventWithBookings }> {
+    const token = getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${url}/events/${eventId}/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch event details');
+    }
+
+    return await response.json();
+}
+
 
 export async function createEvent(formData: FormData): Promise<{ success: boolean; message: string }> {
     const token = getToken();

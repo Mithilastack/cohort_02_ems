@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Sparkles, Menu, X, LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import Image from "next/image";
 interface NavbarProps {
   onGetStarted?: () => void;
 }
@@ -105,8 +105,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onGetStarted }) => {
           {/* Logo */}
           <Link href="/">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-6 h-6" />
+              <div className="flex items-center justify-center">
+                <Image src="/images/logo.png" alt="Logo" width={50} height={50} />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
                 EventMS

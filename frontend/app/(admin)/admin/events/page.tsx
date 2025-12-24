@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAllEventsAdmin, deleteEvent, updateEventStatus, type AdminEvent } from '@/lib/adminApi'
-import { Plus, Pencil, Trash2, Calendar, TrendingUp, Users2, Ticket } from 'lucide-react'
+import { Plus, Pencil, Trash2, Calendar, TrendingUp, Users2, Ticket, Eye } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
@@ -242,6 +242,12 @@ export default function EventsManagement() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    onClick={() => router.push(`/admin/events/${event._id}`)}
+                                                    className="bg-purple-600/90 hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-600/30 text-xs px-3 py-2 transition-all duration-200"
+                                                >
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
                                                 <Button
                                                     onClick={() => router.push(`/admin/events/${event._id}/edit`)}
                                                     className="bg-blue-600/90 hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-600/30 text-xs px-3 py-2 transition-all duration-200"
