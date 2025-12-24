@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Search, Calendar, MapPin, Users, IndianRupee, Filter, ChevronLeft, ChevronRight, Sparkles, Heart } from 'lucide-react'
@@ -25,7 +25,7 @@ const CATEGORIES = [
     'Entertainment'
 ]
 
-export default function EventsPage() {
+function EventsContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const categoriesRef = useRef<HTMLDivElement>(null)
@@ -465,5 +465,36 @@ export default function EventsPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function EventsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen relative overflow-hidden bg-slate-950 text-slate-200 font-sans selection:bg-purple-500/30">
+                <div className="fixed inset-0 pointer-events-none z-0">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-1000" />
+                    <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] bg-indigo-500/5 rounded-full blur-[80px]" />
+                </div>
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col min-h-screen mt-20">
+                    <div className="text-center mb-12 space-y-4">
+                        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 drop-shadow-sm">
+                            Discover <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Events</span>
+                        </h1>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+                            Loading events...
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[1, 2, 3, 4, 5, 6].map((n) => (
+                            <div key={n} className="h-[420px] rounded-3xl bg-slate-800/40 animate-pulse border border-white/5"></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        }>
+            <EventsContent />
+        </Suspense>
     )
 }
